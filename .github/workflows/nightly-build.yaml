@@ -31,7 +31,7 @@
           }
         },
         {
-            run: "yarn config list --verbose"
+          run: "npm whoami"
         },
         {
           run: "yarn publish --verbose --no-git-tag-version --new-version `node scripts/getNightlyVersion.js` --tag nightly"
