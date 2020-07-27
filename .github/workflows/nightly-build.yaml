@@ -1,9 +1,9 @@
 {
   name: "Nightly build",
   on: {
-    schedule: [
-      { cron: "05 22 * * *" }
-    ]
+    push: {
+      branches: [ "debug-nightly-build" ]
+    },
   },
   jobs: {
     publish: {
