@@ -246,6 +246,7 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 this.getfield,
                 this.hasfield,
                 this.observefield,
+                this.observefieldscoped,
                 this.removefield,
                 this.setfield,
                 this.setfields,
@@ -269,6 +270,7 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 this.createchildren,
                 this.replacechildren,
                 this.insertchildren,
+                this.getscene,
             ],
             ifSGNodeFocus: [this.hasfocus, this.setfocus, this.isinfocuschain],
             ifSGNodeDict: [this.findnode, this.issamenode, this.subtype, this.callfunc],
@@ -470,11 +472,23 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
         signature: {
             args: [
                 new StdlibArgument("functionname", ValueKind.String),
-                new StdlibArgument("functionargs", ValueKind.Dynamic, BrsInvalid.Instance),
+                new StdlibArgument("functionarg", ValueKind.Dynamic, BrsInvalid.Instance),
+                new StdlibArgument("functionarg2", ValueKind.Dynamic, Uninitialized.Instance),
+                new StdlibArgument("functionarg3", ValueKind.Dynamic, Uninitialized.Instance),
+                new StdlibArgument("functionarg4", ValueKind.Dynamic, Uninitialized.Instance),
+                new StdlibArgument("functionarg5", ValueKind.Dynamic, Uninitialized.Instance),
             ],
             returns: ValueKind.Dynamic,
         },
-        impl: (interpreter: Interpreter, functionname: BrsString, functionargs: BrsType) => {
+        impl: (
+            interpreter: Interpreter,
+            functionname: BrsString,
+            functionarg: BrsType,
+            functionarg2: BrsType,
+            functionarg3: BrsType,
+            functionarg4: BrsType,
+            functionarg5: BrsType
+        ) => {
             // We need to search the callee's environment for this function rather than the caller's.
             let componentDef = interpreter.environment.nodeDefMap.get(this.nodeSubtype);
 
@@ -489,9 +503,28 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                         return BrsInvalid.Instance;
                     }
 
+                    let functionArgs = [functionarg];
+                    if (functionarg5 != Uninitialized.Instance) {
+                        functionArgs = [
+                            functionarg,
+                            functionarg2,
+                            functionarg3,
+                            functionarg4,
+                            functionarg5,
+                        ];
+                    } else if (functionarg4 != Uninitialized.Instance) {
+                        functionArgs = [functionarg, functionarg2, functionarg3, functionarg4];
+                    } else if (functionarg3 != Uninitialized.Instance) {
+                        functionArgs = [functionarg, functionarg2, functionarg3];
+                    } else if (functionarg2 != Uninitialized.Instance) {
+                        functionArgs = [functionarg, functionarg2];
+                    }
+
+                    const firstSignature = functionToCall.getFirstSatisfiedSignature(functionArgs);
+
                     // Determine whether the function should get arguments are not.
-                    if (functionToCall.getFirstSatisfiedSignature([functionargs])) {
-                        return functionToCall.call(subInterpreter, functionargs);
+                    if (firstSignature) {
+                        return functionToCall.call(subInterpreter, ...functionArgs);
                     } else {
                         return functionToCall.call(subInterpreter);
                     }
@@ -719,6 +752,28 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
 
     /** Registers a callback to be executed when the value of the field changes */
     private observefield = new Callable("observefield", {
+        signature: {
+            args: [
+                new StdlibArgument("fieldname", ValueKind.String),
+                new StdlibArgument("functionname", ValueKind.String),
+            ],
+            returns: ValueKind.Boolean,
+        },
+        impl: (interpreter: Interpreter, fieldname: BrsString, functionname: BrsString) => {
+            let field = this.fields.get(fieldname.value.toLowerCase());
+            if (field instanceof Field) {
+                let callableFunction = interpreter.getCallableFunction(functionname.value);
+                if (callableFunction) {
+                    field.addObserver(interpreter, callableFunction, this, fieldname);
+                } else {
+                    return BrsBoolean.False;
+                }
+            }
+            return BrsBoolean.True;
+        },
+    });
+
+    private observefieldscoped = new Callable("observefieldscoped", {
         signature: {
             args: [
                 new StdlibArgument("fieldname", ValueKind.String),
@@ -1117,6 +1172,19 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 }
             }
             return BrsBoolean.False;
+        },
+    });
+
+    /**
+     * Returns the node's root Scene. This returns a valid Scene even if the node is not parented.
+     */
+    private getscene = new Callable("getscene", {
+        signature: {
+            args: [],
+            returns: ValueKind.Dynamic,
+        },
+        impl: (interpreter: Interpreter) => {
+            return mGlobal.get(new BrsString("scene"));
         },
     });
 

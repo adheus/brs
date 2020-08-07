@@ -151,7 +151,7 @@ describe("end to end brightscript functions", () => {
             "callback 1 called",
             "callback 2 called",
             "field 3 updated",
-            //ifNodeChildren tests
+            //ifSGNodeChildren tests
             "parent child count: ",
             "0",
             "get same parent from child: ",
@@ -228,6 +228,10 @@ describe("end to end brightscript functions", () => {
             "false",
             "Node subtype is returned:",
             "Node",
+            "Node root scene is returned:",
+            "invalid",
+            "Node root scene name is returned:",
+            "Scene",
             "updatedId",
             "invalid",
             "updatedId",
@@ -627,6 +631,12 @@ describe("end to end brightscript functions", () => {
             "invalid",
             "main: componentPrivateFunction return value:",
             "invalid",
+            "component: inside componentFunctionMultipleParams, args.test: ",
+            "123",
+            "component: inside componentFunctionMultipleParams, args2.test: ",
+            "456",
+            "main: componentFunctionMultipleParams return value success:",
+            "true",
         ]);
 
         expect(allArgs(outputStreams.stderr.write).filter((arg) => arg !== "\n")).toEqual([
