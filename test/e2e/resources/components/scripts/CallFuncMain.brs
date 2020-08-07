@@ -12,4 +12,8 @@ sub Main()
 
     privateResult = node.callFunc("componentPrivateFunction")
     print "main: componentPrivateFunction return value:" privateResult ' => invalid
+
+    result = node.callFunc("componentFunctionMultipleParams", { test: 123 }, { test: 456 })
+    print "main: componentFunctionMultipleParams return value success:" result.success ' => true
+
 end sub
