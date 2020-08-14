@@ -126,7 +126,6 @@ describe("end to end standard libary", () => {
             "<Interface: ifFloat>",
             "<Interface: ifAssociativeArray>",
             "<Interface: ifSGNodeDict>",
-            "My source",
         ]);
     });
 });
