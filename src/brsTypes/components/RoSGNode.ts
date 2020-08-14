@@ -212,6 +212,7 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
     private fields = new Map<string, Field>();
     private children: RoSGNode[] = [];
     private parent: RoSGNode | BrsInvalid = BrsInvalid.Instance;
+    private scopeParent: RoSGNode | BrsInvalid = BrsInvalid.Instance;
     readonly defaultFields: FieldModel[] = [
         { name: "change", type: "roAssociativeArray" },
         { name: "focusable", type: "boolean" },
@@ -358,6 +359,10 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
         }
 
         return BrsInvalid.Instance;
+    }
+
+    setScopeParent(parent: RoSGNode) {
+        this.scopeParent = parent;
     }
 
     setParent(parent: RoSGNode) {
@@ -900,7 +905,11 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
             returns: ValueKind.Dynamic,
         },
         impl: (interpreter: Interpreter) => {
-            return this.parent;
+            if (this.parent instanceof RoSGNode) {
+                return this.parent;
+            } else {
+                return this.scopeParent;
+            }
         },
     });
 
@@ -1331,6 +1340,10 @@ export function createNodeByType(interpreter: Interpreter, type: BrsString): RoS
     // If this is a built-in component, then return it.
     let component = ComponentFactory.createComponent(type.value as BrsComponentName);
     if (component) {
+        const parent = interpreter.environment.getM().get(new BrsString("top"));
+        if (parent instanceof RoSGNode) {
+            component.setScopeParent(parent);
+        }
         return component;
     }
 
@@ -1391,6 +1404,10 @@ export function createNodeByType(interpreter: Interpreter, type: BrsString): RoS
             typeDef = typeDefStack.pop();
         }
 
+        const parent = interpreter.environment.getM().get(new BrsString("top"));
+        if (parent instanceof RoSGNode) {
+            node.setScopeParent(parent);
+        }
         return node;
     } else {
         return BrsInvalid.Instance;
