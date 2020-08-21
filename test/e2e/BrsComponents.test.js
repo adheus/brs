@@ -60,6 +60,12 @@ describe("end to end brightscript functions", () => {
             "bar",
             "items() example value: ",
             "5",
+            "key is not found if sensitive mode is enabled",
+            "false",
+            "key exits with correct casing",
+            "value1",
+            "lookup uses mode case too",
+            "value1",
             "can empty itself: ",
             "true",
         ]);
@@ -238,6 +244,8 @@ describe("end to end brightscript functions", () => {
             "newValue",
             "updatedId",
             "invalid",
+            "33",
+            "37",
         ]);
     });
 
