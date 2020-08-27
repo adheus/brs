@@ -207,6 +207,13 @@ export class Field {
         this.observers.push(brsCallback);
     }
 
+    removeObserver(node: RoSGNode, fieldName: BrsString) {
+        this.observers = this.observers.filter(
+            (callback) =>
+                !(callback.eventParams.node == node && callback.eventParams.fieldName == fieldName)
+        );
+    }
+
     private executeCallbacks(callback: BrsCallback) {
         let { interpreter, callable, environment, eventParams } = callback;
 
@@ -266,6 +273,8 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 this.hasfield,
                 this.observefield,
                 this.observefieldscoped,
+                this.unobservefield,
+                this.unobservefieldscoped,
                 this.removefield,
                 this.setfield,
                 this.setfields,
@@ -813,6 +822,36 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 } else {
                     return BrsBoolean.False;
                 }
+            }
+            return BrsBoolean.True;
+        },
+    });
+
+    private unobservefield = new Callable("unobservefield", {
+        signature: {
+            args: [new StdlibArgument("fieldname", ValueKind.String)],
+            returns: ValueKind.Boolean,
+        },
+        impl: (interpreter: Interpreter, fieldname: BrsString, functionname: BrsString) => {
+            let field = this.fields.get(fieldname.value.toLowerCase());
+            if (field instanceof Field) {
+                field.removeObserver(this, fieldname);
+                return BrsBoolean.True;
+            }
+            return BrsBoolean.True;
+        },
+    });
+
+    private unobservefieldscoped = new Callable("unobservefieldscoped", {
+        signature: {
+            args: [new StdlibArgument("fieldname", ValueKind.String)],
+            returns: ValueKind.Boolean,
+        },
+        impl: (interpreter: Interpreter, fieldname: BrsString, functionname: BrsString) => {
+            let field = this.fields.get(fieldname.value.toLowerCase());
+            if (field instanceof Field) {
+                field.removeObserver(this, fieldname);
+                return BrsBoolean.True;
             }
             return BrsBoolean.True;
         },
