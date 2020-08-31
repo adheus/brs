@@ -504,7 +504,7 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
         signature: {
             args: [
                 new StdlibArgument("functionname", ValueKind.String),
-                new StdlibArgument("functionarg", ValueKind.Dynamic, BrsInvalid.Instance),
+                new StdlibArgument("functionarg1", ValueKind.Dynamic, BrsInvalid.Instance),
                 new StdlibArgument("functionarg2", ValueKind.Dynamic, Uninitialized.Instance),
                 new StdlibArgument("functionarg3", ValueKind.Dynamic, Uninitialized.Instance),
                 new StdlibArgument("functionarg4", ValueKind.Dynamic, Uninitialized.Instance),
@@ -515,7 +515,7 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
         impl: (
             interpreter: Interpreter,
             functionname: BrsString,
-            functionarg: BrsType,
+            functionarg1: BrsType,
             functionarg2: BrsType,
             functionarg3: BrsType,
             functionarg4: BrsType,
@@ -534,23 +534,25 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                         );
                         return BrsInvalid.Instance;
                     }
-
-                    let functionArgs = [functionarg];
+                    let functionArgs = [functionarg1];
                     if (functionarg5 != Uninitialized.Instance) {
                         functionArgs = [
-                            functionarg,
+                            functionarg1,
                             functionarg2,
                             functionarg3,
                             functionarg4,
                             functionarg5,
                         ];
                     } else if (functionarg4 != Uninitialized.Instance) {
-                        functionArgs = [functionarg, functionarg2, functionarg3, functionarg4];
+                        functionArgs = [functionarg1, functionarg2, functionarg3, functionarg4];
                     } else if (functionarg3 != Uninitialized.Instance) {
-                        functionArgs = [functionarg, functionarg2, functionarg3];
+                        functionArgs = [functionarg1, functionarg2, functionarg3];
                     } else if (functionarg2 != Uninitialized.Instance) {
-                        functionArgs = [functionarg, functionarg2];
+                        functionArgs = [functionarg1, functionarg2];
                     }
+
+                    // Clone all arguments that shouldn't be passed through as references [AR]
+                    functionArgs = functionArgs.map((arg) => arg.clone());
 
                     const firstSignature = functionToCall.getFirstSatisfiedSignature(functionArgs);
 
@@ -1448,6 +1450,13 @@ export class RoSGNode extends BrsComponent implements BrsValue, BrsIterable {
                 );
             }
         });
+    }
+
+    /**
+     * RoSGNode is not clonable
+     */
+    clone(): RoSGNode {
+        return this;
     }
 }
 

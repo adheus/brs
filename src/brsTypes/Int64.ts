@@ -217,4 +217,8 @@ export class Int64 implements Numeric, Comparable {
     toString(parent?: BrsType): string {
         return this.value.toString();
     }
+
+    clone(): Int64 {
+        return new Int64(this.value);
+    }
 }

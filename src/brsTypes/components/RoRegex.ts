@@ -165,4 +165,8 @@ export class RoRegex extends BrsComponent implements BrsValue {
             return new RoArray(arr);
         },
     });
+
+    clone(): RoRegex {
+        return this;
+    }
 }

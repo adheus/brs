@@ -626,4 +626,8 @@ export class RoDeviceInfo extends BrsComponent implements BrsValue {
             return this.enableAudioGuideChanged;
         },
     });
+
+    clone(): RoDeviceInfo {
+        return this;
+    }
 }
