@@ -12,8 +12,10 @@ const {
     BrsInvalid,
     ValueKind,
     Uninitialized,
+    Callable,
 } = brs.types;
 const { Interpreter } = require("../../../lib/interpreter");
+const { Scope } = require("../../../lib/interpreter/Environment");
 
 describe("RoSGNode", () => {
     describe("stringification", () => {
@@ -504,6 +506,31 @@ describe("RoSGNode", () => {
             });
         });
 
+        describe("getFields", () => {
+            it("returns all visible fields", () => {
+                let node = new RoSGNode([]);
+
+                let getFields = node.getMethod("getfields");
+                expect(getFields).toBeTruthy();
+
+                let result = getFields.call(interpreter);
+                let expected = new RoAssociativeArray([
+                    { name: new BrsString("change"), value: new RoAssociativeArray([]) },
+                    { name: new BrsString("focusable"), value: BrsBoolean.False },
+                    { name: new BrsString("focusedChild"), value: BrsInvalid.Instance },
+                    { name: new BrsString("id"), value: new BrsString("") },
+                ]);
+                result.elements.forEach((value, name) => {
+                    if (value instanceof RoAssociativeArray) {
+                        expect(value.elements).toBeInstanceOf(Map);
+                        expect(value.elements).toEqual(expected.elements.get(name).elements);
+                    } else {
+                        expect(value).toEqual(expected.elements.get(name));
+                    }
+                });
+            });
+        });
+
         describe("hasfield", () => {
             it("returns presence of a field", () => {
                 let node = new RoSGNode([{ name: new BrsString("foo"), value: new Int32(17) }]);
@@ -519,13 +546,165 @@ describe("RoSGNode", () => {
 
         describe("observefield", () => {
             it("adds an observer", () => {
+                let cbImpl = jest.fn();
                 let node = new RoSGNode([
                     { name: new BrsString("foo"), value: new Int32(-99) },
                     { name: new BrsString("bar"), value: new BrsString("hello") },
                 ]);
 
+                interpreter.environment.hostNode = node;
+                interpreter.environment.define(
+                    Scope.Module,
+                    "callback",
+                    new Callable("callback", {
+                        signature: {
+                            args: [],
+                            returns: ValueKind.Void,
+                        },
+                        impl: cbImpl,
+                    })
+                );
+
                 let observeField = node.getMethod("observefield");
                 expect(observeField).toBeTruthy();
+
+                observeField.call(interpreter, new BrsString("foo"), new BrsString("callback"));
+
+                node.set(new BrsString("foo"), new Int32(1));
+                expect(cbImpl).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe("unobserveField", () => {
+            it("removes all non-permanent observers", () => {
+                let cbImpl = jest.fn();
+                let target = new RoSGNode([
+                    { name: new BrsString("foo"), value: new Int32(-99) },
+                    { name: new BrsString("bar"), value: new BrsString("hello") },
+                ]);
+
+                let subscriberA = new RoSGNode([]);
+                let subscriberB = new RoSGNode([]);
+
+                [subscriberA, subscriberB].forEach((subscriber) => {
+                    interpreter.environment.hostNode = subscriber;
+                    interpreter.environment.define(
+                        Scope.Module,
+                        "callback",
+                        new Callable("callback", {
+                            signature: {
+                                args: [],
+                                returns: ValueKind.Void,
+                            },
+                            impl: cbImpl,
+                        })
+                    );
+
+                    // observe the field from each subscriber
+                    let observeField = target.getMethod("observefield");
+                    expect(observeField).toBeTruthy();
+                    observeField.call(interpreter, new BrsString("foo"), new BrsString("callback"));
+                });
+
+                // update the field to trigger both subscribers
+                target.set(new BrsString("foo"), new Int32(1));
+                expect(cbImpl).toHaveBeenCalledTimes(2);
+
+                // now remove the observer
+                let unobserveField = target.getMethod("unobserveField");
+                expect(unobserveField).toBeTruthy();
+                unobserveField.call(interpreter, new BrsString("foo"));
+
+                // and make sure neither subscriber is called
+                target.set(new BrsString("foo"), new Int32(-99));
+                expect(cbImpl).toHaveBeenCalledTimes(2);
+            });
+        });
+
+        describe("observeFieldScoped", () => {
+            it("adds an observer", () => {
+                let cbImpl = jest.fn();
+                let node = new RoSGNode([
+                    { name: new BrsString("foo"), value: new Int32(-99) },
+                    { name: new BrsString("bar"), value: new BrsString("hello") },
+                ]);
+
+                interpreter.environment.hostNode = node;
+                interpreter.environment.define(
+                    Scope.Module,
+                    "callback",
+                    new Callable("callback", {
+                        signature: {
+                            args: [],
+                            returns: ValueKind.Void,
+                        },
+                        impl: cbImpl,
+                    })
+                );
+
+                let observeFieldScoped = node.getMethod("observefieldscoped");
+                expect(observeFieldScoped).toBeTruthy();
+
+                observeFieldScoped.call(
+                    interpreter,
+                    new BrsString("foo"),
+                    new BrsString("callback")
+                );
+
+                node.set(new BrsString("foo"), new Int32(1));
+                expect(cbImpl).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe("unobserveFieldScoped", () => {
+            it("removes all subscribers of calling node", () => {
+                let target = new RoSGNode([
+                    { name: new BrsString("foo"), value: new Int32(-99) },
+                    { name: new BrsString("bar"), value: new BrsString("hello") },
+                ]);
+
+                let subscriberA = new RoSGNode([]);
+                let callbackA = jest.fn();
+                let subscriberB = new RoSGNode([]);
+                let callbackB = jest.fn();
+
+                [
+                    [subscriberA, callbackA],
+                    [subscriberB, callbackB],
+                ].forEach(([subscriber, cbImpl]) => {
+                    interpreter.environment.hostNode = subscriber;
+                    interpreter.environment.define(
+                        Scope.Module,
+                        "callback",
+                        new Callable("callback", {
+                            signature: {
+                                args: [],
+                                returns: ValueKind.Void,
+                            },
+                            impl: cbImpl,
+                        })
+                    );
+
+                    // observe the field from each subscriber
+                    let observeField = target.getMethod("observefieldScoped");
+                    expect(observeField).toBeTruthy();
+                    observeField.call(interpreter, new BrsString("foo"), new BrsString("callback"));
+                });
+
+                // update the field to trigger both subscribers
+                target.set(new BrsString("foo"), new Int32(1));
+                expect(callbackA).toHaveBeenCalledTimes(1);
+                expect(callbackB).toHaveBeenCalledTimes(1);
+
+                // now remove observer B (since subscriberB is still the host node)
+                let unobserveFieldScoped = target.getMethod("unobserveFieldScoped");
+                expect(unobserveFieldScoped).toBeTruthy();
+                unobserveFieldScoped.call(interpreter, new BrsString("foo"));
+
+                // and make sure B is only called once
+                target.set(new BrsString("foo"), new Int32(-99));
+                expect(callbackA).toHaveBeenCalledTimes(2);
+                expect(callbackB).toHaveBeenCalledTimes(1);
             });
         });
 
@@ -2074,6 +2253,7 @@ describe("RoSGNode", () => {
             child2 = new RoSGNode([{ name: idString, value: new BrsString("child2") }]);
             child3 = new RoSGNode([{ name: idString, value: new BrsString("child3") }]);
             child4 = new RoSGNode([{ name: idString, value: new BrsString("child4") }]);
+            child5 = new RoSGNode([{ name: idString, value: new BrsString("") }]);
         });
 
         describe("findnode", () => {
@@ -2082,6 +2262,13 @@ describe("RoSGNode", () => {
                 expect(findNode).toBeTruthy();
 
                 let invalidNode = findNode.call(interpreter, new BrsString("someRandomId"));
+                expect(invalidNode).toEqual(BrsInvalid.Instance);
+            });
+
+            it("returns invalid on empty id string", () => {
+                let findNode = parent.getMethod("findnode");
+
+                let invalidNode = findNode.call(interpreter, new BrsString(""));
                 expect(invalidNode).toEqual(BrsInvalid.Instance);
             });
 

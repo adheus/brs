@@ -21,15 +21,16 @@ import {
     Float,
 } from "../brsTypes";
 
-import { Lexeme } from "../lexer";
+import { Lexeme, Location } from "../lexer";
 import { isToken } from "../lexer/Token";
 import { Expr, Stmt, ComponentScopeResolver } from "../parser";
-import { BrsError, TypeMismatch, getLoggerUsing } from "../Error";
+import { BrsError, getLoggerUsing } from "../Error";
 
 import * as StdLib from "../stdlib";
 import { _brs_ } from "../extensions";
 
 import { Scope, Environment, NotFound } from "./Environment";
+import { TypeMismatch } from "./TypeMismatch";
 import { OutputProxy } from "./OutputProxy";
 import { toCallable } from "./BrsFunction";
 import { Runtime } from "../parser/Statement";
@@ -63,6 +64,8 @@ export class Interpreter implements Expr.Visitor<BrsType>, Stmt.Visitor<BrsType>
     readonly stdout: OutputProxy;
     readonly stderr: OutputProxy;
     readonly temporaryVolume: MemoryFileSystem = new MemoryFileSystem();
+
+    location: Location;
 
     /** Allows consumers to observe errors as they're detected. */
     readonly events = new EventEmitter();
@@ -143,6 +146,11 @@ export class Interpreter implements Expr.Visitor<BrsType>, Stmt.Visitor<BrsType>
         this.stdout = new OutputProxy(options.stdout);
         this.stderr = new OutputProxy(options.stderr);
         this.options = options;
+        this.location = {
+            file: "(none)",
+            start: { line: -1, column: -1 },
+            end: { line: -1, column: -1 },
+        };
 
         Object.keys(StdLib)
             .map((name) => (StdLib as any)[name])
@@ -203,11 +211,11 @@ export class Interpreter implements Expr.Visitor<BrsType>, Stmt.Visitor<BrsType>
                 },
             });
 
-            let maybeMain = this.visitVariable(mainVariable);
+            let maybeMain = this.evaluate(mainVariable);
 
             if (maybeMain.kind === ValueKind.Callable) {
                 results = [
-                    this.visitCall(
+                    this.evaluate(
                         new Expr.Call(
                             mainVariable,
                             mainVariable.name,
@@ -410,6 +418,56 @@ export class Interpreter implements Expr.Visitor<BrsType>, Stmt.Visitor<BrsType>
         }
 
         this.environment.define(Scope.Function, statement.name.text, value);
+        return BrsInvalid.Instance;
+    }
+
+    visitDim(statement: Stmt.Dim): BrsType {
+        if (statement.name.isReserved) {
+            this.addError(
+                new BrsError(
+                    `Cannot assign a value to reserved name '${statement.name.text}'`,
+                    statement.name.location
+                )
+            );
+            return BrsInvalid.Instance;
+        }
+
+        // NOTE: Roku's dim implementation creates a resizeable, empty array for the
+        //   bottom children. Resizeable arrays aren't implemented yet (issue #530),
+        //   so when that's added this code should be updated so the bottom-level arrays
+        //   are resizeable, but empty
+        let dimensionValues: number[] = [];
+        statement.dimensions.forEach((expr) => {
+            let val = this.evaluate(expr);
+            if (val.kind !== ValueKind.Int32) {
+                this.addError(
+                    new BrsError(`Dim expression must evaluate to an integer`, expr.location)
+                );
+                return BrsInvalid.Instance;
+            }
+            // dim takes max-index, so +1 to get the actual array size
+            dimensionValues.push(val.getValue() + 1);
+            return;
+        });
+
+        let createArrayTree = (dimIndex: number = 0): RoArray => {
+            let children: RoArray[] = [];
+            let size = dimensionValues[dimIndex];
+            for (let i = 0; i < size; i++) {
+                if (dimIndex < dimensionValues.length) {
+                    let subchildren = createArrayTree(dimIndex + 1);
+                    if (subchildren !== undefined) children.push(subchildren);
+                }
+            }
+            let child = new RoArray(children);
+
+            return child;
+        };
+
+        let array = createArrayTree();
+
+        this.environment.define(Scope.Function, statement.name.text, array);
+
         return BrsInvalid.Instance;
     }
 
@@ -1526,10 +1584,12 @@ export class Interpreter implements Expr.Visitor<BrsType>, Stmt.Visitor<BrsType>
     }
 
     evaluate(this: Interpreter, expression: Expr.Expression): BrsType {
+        this.location = expression.location;
         return expression.accept<BrsType>(this);
     }
 
     execute(this: Interpreter, statement: Stmt.Statement): BrsType {
+        this.location = statement.location;
         return statement.accept<BrsType>(this);
     }
 

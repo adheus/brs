@@ -1,4 +1,4 @@
-sub main()
+sub init()
     ' tests for ifAssociativeArray
     node1 = createObject("roSGNode", "Node")
     node1.foo = "foo"
@@ -30,6 +30,8 @@ sub main()
 
     node1.setField("field3", true)
     print "field3 in node now is: " node1.getField("field3")      ' => true
+
+    print "number of fields, via getFields().count(): " node1.getFields().count() ' => 2
 
     node1.setFields({ field1: "hello", field3: false })
     print "field1 in node now is: " node1.getField("field1")      ' => hello
@@ -154,6 +156,7 @@ sub main()
         child.name = "sibling-" + id
         children[id] = child
     end for
+    root.createChild("Node") ' create node with empty id
 
     result = children["c4"].findNode("c7")
     print "node finds its sibling: " result.name                    ' => name-c7
@@ -173,6 +176,10 @@ sub main()
     ' finds its grandparent
     result = cousin2.findNode("root")
     print "node finds its grandparent: " result.name                ' => root-node
+
+    ' returns invalid on empty string
+    result = root.findNode("")
+    print "returns invalid on empty:" result
 
     ' returns true if both nodes are the same
     n = createObject("roSGNode", "Node")
@@ -235,6 +242,7 @@ end sub
 
 sub onCB1Called()
     print "callback 1 called"
+    return
 end sub
 
 sub onCB2Called()

@@ -5,11 +5,16 @@ const lolex = require("lolex");
 describe("end to end brightscript functions", () => {
     let outputStreams;
     let clock;
+    const OLD_ENV = process.env;
 
     beforeAll(() => {
         clock = lolex.install({ now: 1547072370937 });
         outputStreams = createMockStreams();
         outputStreams.root = __dirname + "/resources";
+    });
+
+    beforeEach(() => {
+        process.env = { ...OLD_ENV };
     });
 
     afterEach(() => {
@@ -19,6 +24,7 @@ describe("end to end brightscript functions", () => {
     afterAll(() => {
         clock.uninstall();
         jest.restoreAllMocks();
+        process.env = OLD_ENV;
     });
 
     test("components/roArray.brs", async () => {
@@ -117,8 +123,8 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/roSGNode.brs", async () => {
-        await execute([resourceFile("components", "roSGNode.brs")], outputStreams);
+    test("components/roSGNode/main.brs", async () => {
+        await execute([resourceFile("components", "roSGNode", "main.brs")], outputStreams);
 
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
             "node size: ",
@@ -146,6 +152,8 @@ describe("end to end brightscript functions", () => {
             "false",
             "field3 in node now is: ",
             "true",
+            "number of fields, via getFields().count(): ",
+            "2",
             "field1 in node now is: ",
             "hello",
             "field3 in node now is: ",
@@ -228,6 +236,8 @@ describe("end to end brightscript functions", () => {
             "Cousin-2",
             "node finds its grandparent: ",
             "root-node",
+            "returns invalid on empty:",
+            "invalid",
             "is same node returns true:",
             "true",
             "is same node returns false:",
@@ -290,8 +300,10 @@ describe("end to end brightscript functions", () => {
 
         expect(allArgs(outputStreams.stderr.write)).toEqual([]);
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "hello",
             "bar",
             "bar",
+            "foo",
             "true", // comparison
             "5", // length
             "b", // split("/")[1]
@@ -578,11 +590,8 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/scripts/FieldChangeMain.brs", async () => {
-        await execute(
-            [resourceFile("components", "scripts", "FieldChangeMain.brs")],
-            outputStreams
-        );
+    test("components/field-change/main.brs", async () => {
+        await execute([resourceFile("components", "field-change", "main.brs")], outputStreams);
 
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
             // inheritance/overrides
@@ -682,6 +691,95 @@ describe("end to end brightscript functions", () => {
             "invalid",
             "invalid",
             "Node",
+        ]);
+    });
+
+    test("components/roDeviceInfo.brs", async () => {
+        process.env.TZ = "PST";
+        process.env.LOCALE = "en_US";
+
+        await execute([resourceFile("components", "roDeviceInfo.brs")], outputStreams);
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "",
+            "",
+            "",
+            "0",
+            "",
+            "0",
+            "",
+            "",
+            "true",
+            "",
+            "en_US",
+            "36",
+            "PST",
+            "false",
+            "en_US",
+            "en_US",
+            "",
+            "0",
+            "0",
+            "0",
+            "true",
+            "on",
+            "default",
+            "",
+            "true",
+            "true",
+            "true",
+            "",
+            "false",
+            "true",
+            "true",
+            "",
+            "",
+            "0",
+            "0",
+            "",
+            "",
+            "",
+            "0",
+            "",
+            "0",
+            "0",
+            "true",
+            "mpeg4 avc",
+            "0",
+            "",
+            "true",
+            "",
+            "0",
+            "true",
+            "0",
+            "",
+            "true",
+        ]);
+    });
+
+    test("components/Scene.brs", async () => {
+        await execute([resourceFile("components", "Scene.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "scene node type:",
+            "Node",
+            "scene node subtype:",
+            "Scene",
+            "scene node backs exit scene:",
+            "true",
+            "scene node background uri:",
+            "/images/arrow.png",
+            "scene node background color:",
+            "0xEB1010FF",
+            "extended scene node type:",
+            "Node",
+            "extended scene node subtype:",
+            "ExtendedScene",
+            "extended scene node backs exit scene:",
+            "true",
+            "extended scene node background uri:",
+            "/images/arrow.png",
+            "extended scene node background color:",
+            "0xEB1010FF",
         ]);
     });
 });
