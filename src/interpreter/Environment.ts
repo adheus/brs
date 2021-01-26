@@ -181,22 +181,10 @@ export class Environment {
             }
             return variableToReturn;
         } else {
-            // Because brs hasn't implemented every built-in global function yet,
-            // allow mocking of functions that "don't exist" in source. This unblocks
-            // unit testing of code that calls the not-yet-implemented global functions.
-            //
-            // TODO: remove this once all built-in global functions are implemented?
-
             // Don't allow mocks of reserved functions like "init" and "main".
             if (!name.isReserved) {
                 let mockedFunc = this.getMockFunction(lowercaseName);
                 if (mockedFunc !== BrsInvalid.Instance) {
-                    console.error(
-                        new BrsError(
-                            `WARNING: using mocked function '${lowercaseName}', but no function with that name is found in-scope in source.`,
-                            name.location
-                        ).format()
-                    );
                     return mockedFunc;
                 }
             }
@@ -275,6 +263,14 @@ export class Environment {
     }
 
     /**
+     * returns true if the variable has a mocked object
+     * @param objName the object to mock
+     */
+    public isMockedObject(objName: string): boolean {
+        return this.mockObjects.has(objName);
+    }
+
+    /**
      * retrieves mocked object if it exists
      * @param objName the object to mock
      */
@@ -340,22 +336,58 @@ export class Environment {
      */
     public resetMocks() {
         this.resetMockObjects();
-        this.resetMockFunctions();
+        this.resetUnscopedMockFunctions();
     }
 
     /**
      * resets all of the mocked objects in this environment
      */
     public resetMockObjects() {
+        this.mockObjects.forEach((mock, name) => {
+            this.resetMockObject(name);
+        });
         this.mockObjects.clear();
     }
 
     /**
-     * resets all of the mocked functions in this environment
+     * resets a single mocked object in this environment
      */
-    public resetMockFunctions() {
-        this.scopedMockFunctions.clear();
+    public resetMockObject(name: string) {
+        name = name.toLowerCase();
+        // Since partial-component mocks are actually just scoped function mocks,
+        // we need to go into this node's environment and remove all of the scoped mocks.
+        let nodeDef = this.nodeDefMap.get(name);
+        nodeDef?.environment?.resetScopedMockFunctions();
+
+        this.mockObjects.delete(name);
+    }
+
+    /**
+     * reset the unscoped (globally mocked) function that matches the given name
+     */
+    public resetUnscopedMockFunction(name: string) {
+        this.unscopedMockFunctions.delete(name.toLowerCase());
+    }
+
+    /**
+     * resets all of the unscoped (globally mocked) functions
+     */
+    public resetUnscopedMockFunctions() {
         this.unscopedMockFunctions.clear();
+    }
+
+    /**
+     * reset the scoped (this environment only) function that matches the given name
+     */
+    public resetScopedMockFunction(name: string) {
+        this.scopedMockFunctions.delete(name.toLowerCase());
+    }
+
+    /**
+     * resets all of the mocked functions *in this environment*
+     */
+    public resetScopedMockFunctions() {
+        this.scopedMockFunctions.clear();
     }
 
     /**

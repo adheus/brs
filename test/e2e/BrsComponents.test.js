@@ -123,142 +123,6 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/roSGNode/main.brs", async () => {
-        await execute([resourceFile("components", "roSGNode", "main.brs")], outputStreams);
-
-        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
-            "node size: ",
-            "7",
-            "node keys size: ",
-            "7",
-            "node items size: ",
-            "7",
-            "can delete elements: ",
-            "true",
-            "can look up elements: ",
-            "true",
-            "can look up elements (brackets): ",
-            "true",
-            "can check for existence: ",
-            "true",
-            "can empty itself: ",
-            "true",
-            //ifNodeField tests
-            "node size: ",
-            "3",
-            "node size: ",
-            "2",
-            "field3 in node is: ",
-            "false",
-            "field3 in node now is: ",
-            "true",
-            "number of fields, via getFields().count(): ",
-            "2",
-            "field1 in node now is: ",
-            "hello",
-            "field3 in node now is: ",
-            "false",
-            "field3 present? ",
-            "true",
-            "fieldほ present? ",
-            "false",
-            "callback 1 called",
-            "callback 2 called",
-            "field 3 updated",
-            //ifSGNodeChildren tests
-            "parent child count: ",
-            "0",
-            "get same parent from child: ",
-            "true",
-            "parent child count: ",
-            "1",
-            "parent child count: ",
-            "2",
-            "parent child count: ",
-            "3",
-            "parent child count: ",
-            "2",
-            "children size: ",
-            "2",
-            "first child id after replacing: ",
-            "new node",
-            "parent child count: ",
-            "2",
-            "parent child count: ",
-            "2",
-            "parent child count: ",
-            "0",
-            "parent child count: ",
-            "3",
-            "parent child count: ",
-            "0",
-            "parent child count: ",
-            "2",
-            "parent child count: ",
-            "3",
-            "parent child count: ",
-            "4",
-            "parent child count: ",
-            "4",
-            "parent child count: ",
-            "6",
-            "parent child count: ",
-            "4",
-            "inserted child id: ",
-            "new node",
-            "parent child count: ",
-            "4",
-            "new parent id: ",
-            "new node",
-            //ifSGNodeFocus tests
-            "is parent in focus chain: ",
-            "false",
-            "is parent in focus chain: ",
-            "true",
-            "does grand child1 have focus: ",
-            "true",
-            "does grand child1 still have focus: ",
-            "false",
-            "does child2 have focus: ",
-            "true",
-            //ifNodeDict tests
-            "find node that does not exist: ",
-            "invalid",
-            "node finds itself: ",
-            "current",
-            "node finds one of its children: ",
-            "Child",
-            "node finds its grandchild: ",
-            "Grandchild",
-            "node finds its sibling: ",
-            "sibling-c7",
-            "node finds a cousin node: ",
-            "Cousin-2",
-            "node finds its grandparent: ",
-            "root-node",
-            "returns invalid on empty:",
-            "invalid",
-            "is same node returns true:",
-            "true",
-            "is same node returns false:",
-            "false",
-            "Node subtype is returned:",
-            "Node",
-            "Node root scene is returned:",
-            "invalid",
-            "Node root scene name is returned:",
-            "Scene",
-            "updatedId",
-            "invalid",
-            "updatedId",
-            "newValue",
-            "updatedId",
-            "invalid",
-            "33",
-            "37",
-        ]);
-    });
-
     test("components/roRegex.brs", async () => {
         await execute([resourceFile("components", "roRegex.brs")], outputStreams);
 
@@ -292,6 +156,18 @@ describe("end to end brightscript functions", () => {
             "789",
             " ]",
             " ]",
+            "Matches with groups: [ ",
+            "[ ",
+            "abx",
+            ", ",
+            "bx",
+            " ]",
+            "[ ",
+            "aby",
+            ", ",
+            "by",
+            " ]",
+            " ]",
         ]);
     });
 
@@ -310,6 +186,35 @@ describe("end to end brightscript functions", () => {
             "%F0%9F%90%B6", // dog emoji, uri-encoded
             "🐶", // uri-encoded dog emoji, decoded
         ]);
+    });
+
+    test("components/roXMLElement.brs", () => {
+        return execute([resourceFile("components", "roXMLElement.brs")], outputStreams).then(() => {
+            expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+                "xmlParser = ",
+                "<Component: roXMLElement>",
+                "type(xmlParser) = ",
+                "roXMLElement",
+                "parse bad xml string, result = ",
+                "false",
+                "parse good xml string, result = ",
+                "true",
+                "getName() = ",
+                "tag1",
+                "getAttributes() = ",
+                `<Component: roAssociativeArray> =\n` +
+                    `{\n` +
+                    `    id: someId\n` +
+                    `    attr1: 0\n` +
+                    `}`,
+                'getNamedElementsCi("child1") count = ',
+                "2",
+                "name of first child  = ",
+                "Child1",
+                "mame of second child = ",
+                "CHILD1",
+            ]);
+        });
     });
 
     test("components/customComponent.brs", async () => {
@@ -342,8 +247,6 @@ describe("end to end brightscript functions", () => {
     });
 
     test("components/componentExtension.brs", async () => {
-        let consoleWarningSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
         await execute([resourceFile("components", "componentExtension.brs")], outputStreams);
 
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
@@ -353,14 +256,13 @@ describe("end to end brightscript functions", () => {
             "ExtendedChild init",
             "ExtendedComponent init",
             "ExtendedComponent start",
+            "true", //m.top.isSubtype("ExtendedComponent")
+            "true", //m.top.isSubtype("BaseComponent")
+            "true", //m.top.isSubtype("Node")
+            "false", // m.top.isSubtype("OtherComponent")
+            "BaseComponent", //m.top.parentSubtype("ExtendedComponent")
+            "Node", //m.top.parentSubtype("BaseComponent")
         ]);
-
-        let warning = allArgs(consoleWarningSpy)
-            .filter((arg) => arg !== "\n")[0]
-            .split("Warning: ")[1]
-            .trim();
-        expect(warning).toEqual(`"nonImplementedSub" was not found in scope.`);
-        consoleWarningSpy.mockRestore();
     });
 
     test("components/roIntrinsics.brs", async () => {
@@ -392,6 +294,10 @@ describe("end to end brightscript functions", () => {
             "789.012",
             "Integer to string ",
             "23",
+            "LongInteger object type",
+            "roLongInteger",
+            "LongInteger to string ",
+            "2000111222333",
         ]);
     });
 
@@ -631,36 +537,6 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/scripts/CallFuncMain.brs", async () => {
-        await execute([resourceFile("components", "scripts", "CallFuncMain.brs")], outputStreams);
-
-        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
-            "component: inside componentFunction, args.test: ",
-            "123",
-            "component: componentField:",
-            "componentField value",
-            "component: mainField:",
-            "invalid",
-            "main: componentFunction return value success:",
-            "true",
-            "component: inside componentVoidFunction",
-            "main: componentVoidFunction return value:",
-            "invalid",
-            "main: componentPrivateFunction return value:",
-            "invalid",
-            "component: inside componentFunctionMultipleParams, args.test: ",
-            "123",
-            "component: inside componentFunctionMultipleParams, args2.test: ",
-            "456",
-            "main: componentFunctionMultipleParams return value success:",
-            "true",
-        ]);
-
-        expect(allArgs(outputStreams.stderr.write).filter((arg) => arg !== "\n")).toEqual([
-            "Warning calling function in CallFuncComponent: no function interface specified for componentPrivateFunction",
-        ]);
-    });
-
     test("components/ContentNode.brs", async () => {
         await execute([resourceFile("components", "scripts", "ContentNode.brs")], outputStreams);
 
@@ -710,12 +586,15 @@ describe("end to end brightscript functions", () => {
             "",
             "true",
             "",
-            "en_US",
             "36",
             "PST",
             "false",
             "en_US",
             "en_US",
+            "en_US",
+            "fr_CA",
+            "fr_CA",
+            "fr_CA",
             "",
             "0",
             "0",
@@ -780,6 +659,64 @@ describe("end to end brightscript functions", () => {
             "/images/arrow.png",
             "extended scene node background color:",
             "0xEB1010FF",
+        ]);
+    });
+
+    test("components/MiniKeyboard.brs", async () => {
+        await execute([resourceFile("components", "MiniKeyboard.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "miniKeyboard node type:",
+            "Node",
+            "miniKeyboard node subtype:",
+            "MiniKeyboard",
+            "miniKeyboard text:",
+            "hello",
+            "miniKeyboard keyColor:",
+            "0x000000FF",
+            "miniKeyboard focusedKeyColor:",
+            "0x000000FF",
+            "miniKeyboard keyBitmapUri:",
+            "/images/somebitmap.bmp",
+            "miniKeyboard focusBitmapUri:",
+            "/images/somebitmap.bmp",
+            "miniKeyboard showTextEditBox:",
+            "true",
+            "miniKeyboard lowerCase:",
+            "true",
+            "miniKeyboard textEditBox text:",
+            "hello",
+        ]);
+    });
+
+    test("components/TextEditBox.brs", async () => {
+        await execute([resourceFile("components", "TextEditBox.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "textEditBox node type:",
+            "Node",
+            "textEditBox node subtype:",
+            "TextEditBox",
+            "textEditBox text:",
+            "hello",
+            "textEditBox hint text:",
+            "",
+            "textEditBox maxTextLength:",
+            "15",
+            "textEditBox cursorPosition:",
+            "0",
+            "textEditBox clearOnDownKey:",
+            "true",
+            "textEditBox active:",
+            "false",
+            "textEditBox textColor:",
+            "OxFFFFFFFF",
+            "textEditBox hintTextColor:",
+            "OxFFFFFFFF",
+            "textEditBox width:",
+            "-1",
+            "textEditBox backgroundUri:",
+            "",
         ]);
     });
 });

@@ -13,6 +13,7 @@ const {
     ValueKind,
     Uninitialized,
     Callable,
+    MarkupGrid,
 } = brs.types;
 const { Interpreter } = require("../../../lib/interpreter");
 const { Scope } = require("../../../lib/interpreter/Environment");
@@ -157,6 +158,16 @@ describe("RoSGNode", () => {
                 let deleteCall = node.getMethod("delete");
                 expect(deleteCall).toBeTruthy();
                 expect(deleteCall.call(interpreter, new BrsString("foo"))).toBe(BrsBoolean.True);
+                expect(deleteCall.call(interpreter, new BrsString("baz"))).toBe(BrsBoolean.True);
+                expect(node.get(new BrsString("foo"))).toEqual(BrsInvalid.Instance);
+            });
+
+            it("deletes a given item in the associative array, ignoring case", () => {
+                let node = new RoSGNode([{ name: new BrsString("foo"), value: new Int32(-99) }]);
+
+                let deleteCall = node.getMethod("delete");
+                expect(deleteCall).toBeTruthy();
+                expect(deleteCall.call(interpreter, new BrsString("Foo"))).toBe(BrsBoolean.True);
                 expect(deleteCall.call(interpreter, new BrsString("baz"))).toBe(BrsBoolean.True);
                 expect(node.get(new BrsString("foo"))).toEqual(BrsInvalid.Instance);
             });
@@ -726,6 +737,27 @@ describe("RoSGNode", () => {
                 expect(node.getFields().size).toEqual(5);
 
                 result = removeField.call(interpreter, new BrsString("field1"));
+                expect(result).toEqual(BrsBoolean.True);
+                expect(node.getFields().size).toEqual(4);
+            });
+
+            it("removes a field from the node, ignoring case", () => {
+                let node = new RoSGNode([]);
+
+                let addField = node.getMethod("addfield");
+                let removeField = node.getMethod("removefield");
+                expect(removeField).toBeTruthy();
+
+                let result = addField.call(
+                    interpreter,
+                    new BrsString("field1"),
+                    new BrsString("string"),
+                    BrsBoolean.False
+                );
+                expect(result).toEqual(BrsBoolean.True);
+                expect(node.getFields().size).toEqual(5);
+
+                result = removeField.call(interpreter, new BrsString("Field1"));
                 expect(result).toEqual(BrsBoolean.True);
                 expect(node.getFields().size).toEqual(4);
             });
@@ -2131,6 +2163,7 @@ describe("RoSGNode", () => {
         });
 
         describe("setfocus", () => {
+            let focusedChildString = new BrsString("focusedchild");
             it("sets focus on a node", () => {
                 let hasFocus = parent.getMethod("hasfocus");
                 let setFocus = parent.getMethod("setfocus");
@@ -2141,6 +2174,7 @@ describe("RoSGNode", () => {
                 setFocus.call(interpreter, BrsBoolean.True);
                 result = hasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.True);
+                expect(parent.get(focusedChildString)).toEqual(parent);
             });
 
             it("sets focus on a node should disable focus on another", () => {
@@ -2155,12 +2189,18 @@ describe("RoSGNode", () => {
                 result = child2HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.False);
 
+                // by default their focusedChild fields should be invalid
+                expect(child1.get(focusedChildString)).toEqual(BrsInvalid.Instance);
+                expect(child2.get(focusedChildString)).toEqual(BrsInvalid.Instance);
+
                 //focus on child 1
                 child1SetFocus.call(interpreter, BrsBoolean.True);
                 result = child1HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.True);
                 result = child2HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.False);
+                expect(child1.get(focusedChildString)).toEqual(child1);
+                expect(child2.get(focusedChildString)).toEqual(BrsInvalid.Instance);
 
                 //focus on child 2 should remove focus from child 1
                 child2SetFocus.call(interpreter, BrsBoolean.True);
@@ -2168,6 +2208,8 @@ describe("RoSGNode", () => {
                 expect(result).toEqual(BrsBoolean.False);
                 result = child2HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.True);
+                expect(child2.get(focusedChildString)).toEqual(child2);
+                expect(child1.get(focusedChildString)).toEqual(BrsInvalid.Instance);
             });
 
             it("set focus to false", () => {
@@ -2182,6 +2224,8 @@ describe("RoSGNode", () => {
                 expect(result).toEqual(BrsBoolean.True);
                 result = child2HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.False);
+                expect(child1.get(focusedChildString)).toEqual(child1);
+                expect(child2.get(focusedChildString)).toEqual(BrsInvalid.Instance);
 
                 //set focus to false on child 1
                 child1SetFocus.call(interpreter, BrsBoolean.False);
@@ -2189,6 +2233,8 @@ describe("RoSGNode", () => {
                 expect(result).toEqual(BrsBoolean.False);
                 result = child2HasFocus.call(interpreter);
                 expect(result).toEqual(BrsBoolean.False);
+                expect(child1.get(focusedChildString)).toEqual(BrsInvalid.Instance);
+                expect(child2.get(focusedChildString)).toEqual(BrsInvalid.Instance);
             });
         });
 
@@ -2391,6 +2437,83 @@ describe("RoSGNode", () => {
 
                 let result = subtype.call(interpreter);
                 expect(result.value).toBe("randomType");
+            });
+
+            describe("issubtype", () => {
+                class ParentComponent extends RoSGNode {
+                    constructor(name = "ParentComponent") {
+                        super([], name);
+                    }
+                }
+
+                class ChildComponent extends ParentComponent {
+                    constructor(name = "ChildComponent") {
+                        super(name);
+                    }
+                }
+
+                it("returns true for all ancestor types, false otherwise", () => {
+                    let childNode = new ChildComponent();
+                    let issubtype = childNode.getMethod("issubtype");
+
+                    expect(issubtype.call(interpreter, new BrsString("ChildComponent")).value).toBe(
+                        true
+                    );
+                    expect(
+                        issubtype.call(interpreter, new BrsString("ParentComponent")).value
+                    ).toBe(true);
+                    expect(issubtype.call(interpreter, new BrsString("Node")).value).toBe(true);
+
+                    let parentNode = new ParentComponent();
+                    issubtype = parentNode.getMethod("issubtype");
+
+                    expect(issubtype.call(interpreter, new BrsString("ChildComponent")).value).toBe(
+                        false
+                    );
+                    expect(issubtype.call(interpreter, new BrsString("MarkupGrid")).value).toBe(
+                        false
+                    );
+                });
+
+                it("is case-insensitive", () => {
+                    let childNode = new ChildComponent();
+                    let issubtype = childNode.getMethod("issubtype");
+
+                    expect(issubtype.call(interpreter, new BrsString("Node")).value).toBe(true);
+                    expect(issubtype.call(interpreter, new BrsString("node")).value).toBe(true);
+                    expect(issubtype.call(interpreter, new BrsString("NODE")).value).toBe(true);
+                });
+
+                it("does isSubType for other built in components", () => {
+                    let markupNode = new MarkupGrid();
+                    let issubtype = markupNode.getMethod("issubtype");
+
+                    expect(issubtype.call(interpreter, new BrsString("MarkupGrid")).value).toBe(
+                        true
+                    );
+                    expect(issubtype.call(interpreter, new BrsString("ArrayGrid")).value).toBe(
+                        true
+                    );
+                    expect(issubtype.call(interpreter, new BrsString("Node")).value).toBe(true);
+                });
+            });
+
+            describe("parentsubtype", () => {
+                it("returns the parent subtype", () => {
+                    let markupNode = new MarkupGrid();
+                    let parentsubtype = markupNode.getMethod("parentsubtype");
+
+                    let result = parentsubtype.call(interpreter, new BrsString("MarkUpGrid"));
+                    expect(result.value).toBe("ArrayGrid");
+                });
+
+                it("returns invalid if it does not exist", () => {
+                    let node = new RoSGNode([]);
+                    let parentsubtype = node.getMethod("parentsubtype");
+
+                    let result = parentsubtype.call(interpreter, new BrsString("UnknownNode"));
+                    expect(result).toBe(BrsInvalid.Instance);
+                });
             });
         });
     });

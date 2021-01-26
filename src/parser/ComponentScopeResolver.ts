@@ -1,6 +1,7 @@
 import { ComponentDefinition, ComponentScript } from "../componentprocessor";
 import * as Stmt from "./Statement";
-import { BrsComponentName } from "../brsTypes";
+import pSettle from "p-settle";
+import { ComponentFactory } from "../brsTypes";
 
 export class ComponentScopeResolver {
     private readonly excludedNames: string[] = ["init"];
@@ -20,7 +21,15 @@ export class ComponentScopeResolver {
      * @returns All statements in scope for the resolved component
      */
     public async resolve(component: ComponentDefinition): Promise<Stmt.Statement[]> {
-        return Promise.all(this.getStatements(component)).then(this.flatten.bind(this));
+        let statementResults = await pSettle(Array.from(this.getStatements(component)));
+        let rejected = statementResults.filter((res) => res.isRejected);
+        if (rejected.length > 0) {
+            rejected.forEach((rejection) =>
+                rejection.reason.messages.forEach((msg: string) => console.error(msg))
+            );
+            return Promise.reject(`Unable to resolve scope for component ${component.name}`);
+        }
+        return this.flatten(statementResults.map((res) => res.value!));
     }
 
     /**
@@ -68,12 +77,12 @@ export class ComponentScopeResolver {
         let currentComponent: ComponentDefinition | undefined = component;
         while (currentComponent.extends) {
             // If this is a built-in component, then no work is needed and we can return.
-            if (currentComponent.extends in BrsComponentName) {
+            if (ComponentFactory.canResolveComponentType(currentComponent.extends)) {
                 return Promise.resolve();
             }
 
             let previousComponent = currentComponent;
-            currentComponent = this.componentMap.get(currentComponent.extends);
+            currentComponent = this.componentMap.get(currentComponent.extends?.toLowerCase());
             if (!currentComponent) {
                 // The reference implementation doesn't allow extensions of unknown node subtypes, but
                 // BRS hasn't implemented every node type in the reference implementation!  For now,

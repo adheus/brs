@@ -27,8 +27,36 @@ export interface Visitor<T> {
     visitLibrary(statement: Library): BrsInvalid;
 }
 
+let statementTypes = new Set<string>([
+    "Assignment",
+    "Expression",
+    "ExitFor",
+    "ExitWhile",
+    "Print",
+    "If",
+    "Block",
+    "For",
+    "ForEach",
+    "While",
+    "Stmt_Function",
+    "Return",
+    "DottedSet",
+    "IndexedSet",
+    "Increment",
+    "Library",
+    "Dim",
+]);
+
+/**
+ * Returns a boolean of whether or not the given object is a Statement.
+ * @param obj object to check
+ */
+export function isStatement(obj: Expr.Expression | Statement): obj is Statement {
+    return statementTypes.has(obj.type);
+}
+
 /** A BrightScript statement */
-export interface Statement {
+export interface Statement extends AstNode {
     /**
      * Handles the enclosing `Statement` with `visitor`.
      * @param visitor the `Visitor` that will handle the enclosing `Statement`
@@ -36,9 +64,6 @@ export interface Statement {
      *          the statement exited (typically `StopReason.End`)
      */
     accept<R>(visitor: Visitor<R>): BrsType;
-
-    /** The starting and ending location of the expression. */
-    location: Location;
 }
 
 export class Assignment extends AstNode implements Statement {
@@ -152,7 +177,7 @@ export class ExitWhile extends AstNode implements Statement {
 
 export class Function extends AstNode implements Statement {
     constructor(readonly name: Identifier, readonly func: Expr.Function) {
-        super("Function");
+        super("Stmt_Function");
     }
 
     accept<R>(visitor: Visitor<R>): BrsType {
