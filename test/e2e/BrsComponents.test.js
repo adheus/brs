@@ -288,6 +288,18 @@ describe("end to end brightscript functions", () => {
             "789",
             " ]",
             " ]",
+            "Matches with groups: [ ",
+            "[ ",
+            "abx",
+            ", ",
+            "bx",
+            " ]",
+            "[ ",
+            "aby",
+            ", ",
+            "by",
+            " ]",
+            " ]",
         ]);
     });
 
@@ -296,14 +308,45 @@ describe("end to end brightscript functions", () => {
 
         expect(allArgs(outputStreams.stderr.write)).toEqual([]);
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "hello",
             "bar",
             "bar",
+            "foo",
             "true", // comparison
             "5", // length
             "b", // split("/")[1]
             "%F0%9F%90%B6", // dog emoji, uri-encoded
             "🐶", // uri-encoded dog emoji, decoded
         ]);
+    });
+
+    test("components/roXMLElement.brs", () => {
+        return execute([resourceFile("components", "roXMLElement.brs")], outputStreams).then(() => {
+            expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+                "xmlParser = ",
+                "<Component: roXMLElement>",
+                "type(xmlParser) = ",
+                "roXMLElement",
+                "parse bad xml string, result = ",
+                "false",
+                "parse good xml string, result = ",
+                "true",
+                "getName() = ",
+                "tag1",
+                "getAttributes() = ",
+                `<Component: roAssociativeArray> =\n` +
+                    `{\n` +
+                    `    id: someId\n` +
+                    `    attr1: 0\n` +
+                    `}`,
+                'getNamedElementsCi("child1") count = ',
+                "2",
+                "name of first child  = ",
+                "Child1",
+                "mame of second child = ",
+                "CHILD1",
+            ]);
+        });
     });
 
     test("components/customComponent.brs", async () => {
@@ -336,8 +379,6 @@ describe("end to end brightscript functions", () => {
     });
 
     test("components/componentExtension.brs", async () => {
-        let consoleWarningSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
-
         await execute([resourceFile("components", "componentExtension.brs")], outputStreams);
 
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
@@ -347,14 +388,13 @@ describe("end to end brightscript functions", () => {
             "ExtendedChild init",
             "ExtendedComponent init",
             "ExtendedComponent start",
+            "true", //m.top.isSubtype("ExtendedComponent")
+            "true", //m.top.isSubtype("BaseComponent")
+            "true", //m.top.isSubtype("Node")
+            "false", // m.top.isSubtype("OtherComponent")
+            "BaseComponent", //m.top.parentSubtype("ExtendedComponent")
+            "Node", //m.top.parentSubtype("BaseComponent")
         ]);
-
-        let warning = allArgs(consoleWarningSpy)
-            .filter((arg) => arg !== "\n")[0]
-            .split("Warning: ")[1]
-            .trim();
-        expect(warning).toEqual(`"nonImplementedSub" was not found in scope.`);
-        consoleWarningSpy.mockRestore();
     });
 
     test("components/roIntrinsics.brs", async () => {
@@ -386,6 +426,10 @@ describe("end to end brightscript functions", () => {
             "789.012",
             "Integer to string ",
             "23",
+            "LongInteger object type",
+            "roLongInteger",
+            "LongInteger to string ",
+            "2000111222333",
         ]);
     });
 
@@ -584,11 +628,8 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/scripts/FieldChangeMain.brs", async () => {
-        await execute(
-            [resourceFile("components", "scripts", "FieldChangeMain.brs")],
-            outputStreams
-        );
+    test("components/field-change/main.brs", async () => {
+        await execute([resourceFile("components", "field-change", "main.brs")], outputStreams);
 
         expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
             // inheritance/overrides
@@ -691,25 +732,6 @@ describe("end to end brightscript functions", () => {
         ]);
     });
 
-    test("components/scripts/MockFunctionsMain.brs", async () => {
-        await execute(
-            [resourceFile("components", "scripts", "MockFunctionsMain.brs")],
-            outputStreams
-        );
-        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
-            "{fake:'json'}",
-            "GET status: 400",
-            "POST status: 500",
-            "true",
-            "mocked correctly!",
-            "{real: 'json'}",
-            "GET status: 200",
-            "POST status: 200",
-            "false",
-            "mocked correctly!",
-        ]);
-    });
-
     test("components/roDeviceInfo.brs", async () => {
         process.env.TZ = "PST";
         process.env.LOCALE = "en_US";
@@ -726,12 +748,15 @@ describe("end to end brightscript functions", () => {
             "",
             "true",
             "",
-            "en_US",
             "36",
             "PST",
             "false",
             "en_US",
             "en_US",
+            "en_US",
+            "fr_CA",
+            "fr_CA",
+            "fr_CA",
             "",
             "0",
             "0",
@@ -769,6 +794,91 @@ describe("end to end brightscript functions", () => {
             "0",
             "",
             "true",
+        ]);
+    });
+
+    test("components/Scene.brs", async () => {
+        await execute([resourceFile("components", "Scene.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "scene node type:",
+            "Node",
+            "scene node subtype:",
+            "Scene",
+            "scene node backs exit scene:",
+            "true",
+            "scene node background uri:",
+            "/images/arrow.png",
+            "scene node background color:",
+            "0xEB1010FF",
+            "extended scene node type:",
+            "Node",
+            "extended scene node subtype:",
+            "ExtendedScene",
+            "extended scene node backs exit scene:",
+            "true",
+            "extended scene node background uri:",
+            "/images/arrow.png",
+            "extended scene node background color:",
+            "0xEB1010FF",
+        ]);
+    });
+
+    test("components/MiniKeyboard.brs", async () => {
+        await execute([resourceFile("components", "MiniKeyboard.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "miniKeyboard node type:",
+            "Node",
+            "miniKeyboard node subtype:",
+            "MiniKeyboard",
+            "miniKeyboard text:",
+            "hello",
+            "miniKeyboard keyColor:",
+            "0x000000FF",
+            "miniKeyboard focusedKeyColor:",
+            "0x000000FF",
+            "miniKeyboard keyBitmapUri:",
+            "/images/somebitmap.bmp",
+            "miniKeyboard focusBitmapUri:",
+            "/images/somebitmap.bmp",
+            "miniKeyboard showTextEditBox:",
+            "true",
+            "miniKeyboard lowerCase:",
+            "true",
+            "miniKeyboard textEditBox text:",
+            "hello",
+        ]);
+    });
+
+    test("components/TextEditBox.brs", async () => {
+        await execute([resourceFile("components", "TextEditBox.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "textEditBox node type:",
+            "Node",
+            "textEditBox node subtype:",
+            "TextEditBox",
+            "textEditBox text:",
+            "hello",
+            "textEditBox hint text:",
+            "",
+            "textEditBox maxTextLength:",
+            "15",
+            "textEditBox cursorPosition:",
+            "0",
+            "textEditBox clearOnDownKey:",
+            "true",
+            "textEditBox active:",
+            "false",
+            "textEditBox textColor:",
+            "OxFFFFFFFF",
+            "textEditBox hintTextColor:",
+            "OxFFFFFFFF",
+            "textEditBox width:",
+            "-1",
+            "textEditBox backgroundUri:",
+            "",
         ]);
     });
 });

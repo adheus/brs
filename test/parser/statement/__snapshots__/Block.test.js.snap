@@ -246,7 +246,7 @@ Array [
         ],
         "type": "Block",
       },
-      "end": Object {
+      "endKeyword": Object {
         "isReserved": false,
         "kind": "EndSub",
         "literal": undefined,
@@ -282,7 +282,7 @@ Array [
       },
       "parameters": Array [],
       "returns": 11,
-      "type": "Function",
+      "type": "Expr_Function",
     },
     "name": Object {
       "isReserved": false,
@@ -301,7 +301,7 @@ Array [
       },
       "text": "Main",
     },
-    "type": "Function",
+    "type": "Stmt_Function",
   },
 ]
 `;
@@ -383,7 +383,7 @@ Array [
         ],
         "type": "Block",
       },
-      "end": Object {
+      "endKeyword": Object {
         "isReserved": false,
         "kind": "EndSub",
         "literal": undefined,
@@ -419,7 +419,7 @@ Array [
       },
       "parameters": Array [],
       "returns": 11,
-      "type": "Function",
+      "type": "Expr_Function",
     },
     "name": Object {
       "isReserved": false,
@@ -438,7 +438,7 @@ Array [
       },
       "text": "Main",
     },
-    "type": "Function",
+    "type": "Stmt_Function",
   },
 ]
 `;
@@ -677,6 +677,23 @@ Array [
               "type": "Block",
             },
             "tokens": Object {
+              "else": Object {
+                "isReserved": true,
+                "kind": "Else",
+                "literal": undefined,
+                "location": Object {
+                  "end": Object {
+                    "column": 20,
+                    "line": 7,
+                  },
+                  "file": "",
+                  "start": Object {
+                    "column": 16,
+                    "line": 7,
+                  },
+                },
+                "text": "else",
+              },
               "elseIfs": Array [
                 Object {
                   "isReserved": false,
@@ -753,7 +770,7 @@ Array [
         ],
         "type": "Block",
       },
-      "end": Object {
+      "endKeyword": Object {
         "isReserved": false,
         "kind": "EndSub",
         "literal": undefined,
@@ -789,7 +806,7 @@ Array [
       },
       "parameters": Array [],
       "returns": 11,
-      "type": "Function",
+      "type": "Expr_Function",
     },
     "name": Object {
       "isReserved": false,
@@ -808,7 +825,7 @@ Array [
       },
       "text": "Main",
     },
-    "type": "Function",
+    "type": "Stmt_Function",
   },
 ]
 `;

@@ -68,6 +68,9 @@ describe("end to end syntax", () => {
             "16",
             "8",
             "4",
+            "-5", // unary + and -
+            "5",
+            "-5",
         ]);
     });
 
@@ -117,6 +120,19 @@ describe("end to end syntax", () => {
             "foo is not < 2",
             "foo is not < 2 and not > 2",
             "#481 fixed",
+        ]);
+    });
+
+    test("dim.brs", async () => {
+        await execute([resourceFile("dim.brs")], outputStreams);
+
+        expect(allArgs(outputStreams.stdout.write).filter((arg) => arg !== "\n")).toEqual([
+            "4",
+            "5",
+            "5",
+            "hello",
+            "invalid",
+            "invalid",
         ]);
     });
 

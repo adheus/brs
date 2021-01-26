@@ -612,6 +612,10 @@ export class Parser {
                 return returnStatement();
             }
 
+            if (check(Lexeme.Dim)) {
+                return dimStatement();
+            }
+
             if (check(Lexeme.Goto)) {
                 return gotoStatement();
             }
@@ -797,6 +801,7 @@ export class Parser {
             let thenToken: Token | undefined;
             let elseIfTokens: Token[] = [];
             let endIfToken: Token | undefined;
+            let elseToken: Token | undefined;
 
             /**
              * A simple wrapper around `check`, to make tests for a `then` identifier.
@@ -873,6 +878,7 @@ export class Parser {
                 }
 
                 if (blockEnd.kind === Lexeme.Else) {
+                    elseToken = blockEnd;
                     let maybeElseBranch = block(Lexeme.EndIf);
                     if (!maybeElseBranch) {
                         throw addError(peek(), "Expected 'end if' to terminate 'else' block");
@@ -952,6 +958,7 @@ export class Parser {
                     closingToken.kind !== Lexeme.Newline &&
                     (closingToken.kind === Lexeme.Else || match(Lexeme.Else))
                 ) {
+                    elseToken = closingToken;
                     let maybeElseBranch = block(Lexeme.Newline, Lexeme.Eof);
                     if (!maybeElseBranch) {
                         throw addError(peek(), `Expected a statement to follow 'else'`);
@@ -966,6 +973,7 @@ export class Parser {
                     then: thenToken,
                     elseIfs: elseIfTokens,
                     endIf: endIfToken,
+                    else: elseToken,
                 },
                 condition,
                 thenBranch,
@@ -1147,6 +1155,32 @@ export class Parser {
             consume("Labels must be declared on their own line", Lexeme.Newline, Lexeme.Eof);
 
             return new Stmt.Label(tokens);
+        }
+
+        /**
+         * Parses a `dim` statement
+         * @returns an AST representation of an `goto` statement.
+         */
+        function dimStatement() {
+            let dimToken = advance();
+
+            let name = consume("Expected variable name after 'dim'", Lexeme.Identifier);
+
+            match(Lexeme.LeftSquare);
+
+            let dimensions: Expression[] = [expression()];
+            while (!match(Lexeme.RightSquare)) {
+                consume("Expected ',' after expression in 'dim' statement", Lexeme.Comma);
+                dimensions.push(expression());
+            }
+            let rightSquare = previous();
+
+            let tokens = {
+                dim: dimToken,
+                closingBrace: rightSquare,
+            };
+
+            return new Stmt.Dim(tokens, name as Identifier, dimensions);
         }
 
         /**
@@ -1353,7 +1387,7 @@ export class Parser {
         }
 
         function prefixUnary(): Expression {
-            if (match(Lexeme.Not, Lexeme.Minus)) {
+            if (match(Lexeme.Not, Lexeme.Minus, Lexeme.Plus)) {
                 let operator = previous();
                 let right = relational();
                 return new Expr.Unary(operator, right);
